@@ -3,40 +3,40 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-import authRoutes from "./routes/auth.route.js";
-import messageRoutes from "./routes/message.route.js";
+import path from "path";
 
 import { connectDB } from "./lib/db.js";
 
+import authRoutes from "./routes/auth.route.js";
+import messageRoutes from "./routes/message.route.js";
+import { app, server } from "./lib/socket.js";
+
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 5001; // ✅ Set a default port
+const PORT = process.env.PORT;
+const __dirname = path.resolve();
 
-// Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173", // ✅ Frontend URL
-    credentials: true, // ✅ Allow sending cookies
-    methods: ["GET", "POST", "PUT", "DELETE"], // ✅ Explicitly allow certain methods
-    allowedHeaders: ["Content-Type", "Authorization"], // ✅ Allow headers if needed
+    origin: "http://localhost:5173",
+    credentials: true,
   })
 );
 
-// Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/message", messageRoutes);
+app.use("/api/messages", messageRoutes);
 
-// ✅ Connect to Database Before Starting Server
-connectDB()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log("Server is running on port: " + PORT);
-    });
-  })
-  .catch((error) => {
-    console.error("Database connection failed:", error);
-    process.exit(1); // Stop the process if DB fails
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
   });
+}
+
+server.listen(PORT, () => {
+  console.log("server is running on PORT:" + PORT);
+  connectDB();
+});
